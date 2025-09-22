@@ -3,6 +3,7 @@ package slurm
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"net/http"
@@ -21,6 +22,17 @@ import (
 
 	"regexp"
 )
+
+func createRuntime(containerRuntime string) (Runtime, error) {
+	switch containerRuntime {
+	case "singularity":
+		return &SingularityRuntime{}, nil
+	case "enroot":
+		return &EnrootRuntime{}, nil
+	default:
+		return nil, fmt.Errorf("invalid runtime")
+	}
+}
 
 func parseMem(val string) (int64, error) {
 	re := regexp.MustCompile(`^(\d+)([KMG]?)$`)
@@ -58,6 +70,13 @@ func (h *SidecarHandler) SubmitHandler(w http.ResponseWriter, r *http.Request) {
 	log.G(h.Ctx).Info("Slurm Sidecar: received Submit call")
 	statusCode := http.StatusOK
 	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		statusCode = http.StatusInternalServerError
+		h.handleError(spanCtx, w, statusCode, err)
+		return
+	}
+
+	containerRuntime, err := createRuntime(h.Config.ContainerRuntime)
 	if err != nil {
 		statusCode = http.StatusInternalServerError
 		h.handleError(spanCtx, w, statusCode, err)
@@ -142,7 +161,7 @@ func (h *SidecarHandler) SubmitHandler(w http.ResponseWriter, r *http.Request) {
 		// prepareEnvs creates a file in the working directory, that must exist. This is created at prepareMounts.
 		envs := prepareEnvs(spanCtx, h.Config, data, container)
 		image = prepareImage(spanCtx, h.Config, metadata, container.Image)
-		commstr1 := prepareRuntimeCommand(h.Config, container, metadata)
+		commstr1 := containerRuntime.prepareCommand(h.Config, container, metadata)
 		log.G(h.Ctx).Debug("-- Appending all commands together...")
 		runtime_command := append(commstr1, envs...)
 		switch h.Config.ContainerRuntime {

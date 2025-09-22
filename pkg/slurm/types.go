@@ -1,5 +1,10 @@
 package slurm
 
+import (
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
 // InterLinkConfig holds the whole configuration
 type SlurmConfig struct {
 	VKConfigPath              string   `yaml:"VKConfigPath"`
@@ -42,4 +47,16 @@ type ContainerCommand struct {
 	containerCommand []string
 	containerArgs    []string
 	containerImage   string
+}
+
+type Runtime interface {
+	prepareCommand(config SlurmConfig, container v1.Container, metadata metav1.ObjectMeta)
+}
+
+type SingularityRuntime struct {
+	ContainerCommand
+}
+
+type EnrootRuntime struct {
+	ContainerCommand
 }

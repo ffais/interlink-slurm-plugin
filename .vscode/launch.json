@@ -1,0 +1,31 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Attach",
+			"type": "go",
+			"request": "attach",
+			"mode": "remote",
+			"remotePath": "",
+			"port":2345,
+			"host":"127.0.0.1",
+			"showLog": true,
+			"trace": "log",
+			"logOutput": "rpc",
+			"substitutePath": [
+				{
+				"from": "${workspaceFolder}",
+				"to": "github.com/intertwin-eu/interlink-slurm-plugin",
+				},
+				{
+				"from": "${env:HOME}/go/pkg/mod/github.com",
+				"to": "github.com",
+				},
+				{
+				"from": "${env:HOME}/go/pkg/mod/golang.org",
+				"to": "golang.org",
+				}
+			],
+		}
+	]
+}

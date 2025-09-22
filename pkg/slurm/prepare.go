@@ -1373,3 +1373,49 @@ func prepareImage(Ctx context.Context, config SlurmConfig, metadata metav1.Objec
 	}
 	return image
 }
+
+func (cmd *SingularityRuntime) prepareCommand(config SlurmConfig, container v1.Container, metadata metav1.ObjectMeta) {
+	singularityMounts := ""
+	if singMounts, ok := metadata.Annotations["slurm-job.vk.io/singularity-mounts"]; ok {
+		singularityMounts = singMounts
+	}
+
+	singularityOptions := ""
+	if singOpts, ok := metadata.Annotations["slurm-job.vk.io/singularity-options"]; ok {
+		singularityOptions = singOpts
+	}
+
+	// See https://github.com/interTwin-eu/interlink-slurm-plugin/issues/32#issuecomment-2416031030
+	// singularity run will honor the entrypoint/command (if exist) in container image, while exec will override entrypoint.
+	// Thus if pod command (equivalent to container entrypoint) exist, we do exec, and other case we do run
+	singularityCommand := ""
+	if len(container.Command) != 0 {
+		singularityCommand = "exec"
+	} else {
+		singularityCommand = "run"
+	}
+
+	// no-eval is important so that singularity does not evaluate env var, because the shellquote has already done the safety check.
+	commstr1 := []string{config.SingularityPath, singularityCommand}
+	commstr1 = append(commstr1, config.SingularityDefaultOptions...)
+	commstr1 = append(commstr1, singularityMounts, singularityOptions)
+	cmd.runtimeCommand = append(cmd.runtimeCommand, commstr1...)
+}
+
+func (cmd *EnrootRuntime) prepareCommand(config SlurmConfig, container v1.Container, metadata metav1.ObjectMeta) {
+	enrootMounts := ""
+	if enMounts, ok := metadata.Annotations["slurm-job.vk.io/enroot-mounts"]; ok {
+		enrootMounts = enMounts
+	}
+
+	enrootOptions := ""
+	if enOpts, ok := metadata.Annotations["slurm-job.vk.io/enroot-options"]; ok {
+		enrootOptions = enOpts
+	}
+
+	enrootCommand := "start"
+	commstr1 := []string{config.EnrootPath, enrootCommand}
+	commstr1 = append(commstr1, config.EnrootDefaultOptions...)
+	commstr1 = append(commstr1, enrootMounts, enrootOptions)
+	cmd.runtimeCommand = append(cmd.runtimeCommand, commstr1...)
+}
